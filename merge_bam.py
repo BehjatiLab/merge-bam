@@ -33,30 +33,32 @@ def filter_bam_by_interval(
 
 
 # TODO add support for other types of tabix indexed files such as VCF.
-def load_intervals(bed_file):
+def load_intervals(file):
     """
     Load intervals from a BED file or a tabix-indexed gzipped BED file (.bed.gz).
 
-    :param bed_file: Path to the BED file (either plain .bed or .bed.gz with .tbi index).
-    :return: List of intervals (chrom, start, end).
+    :param file:
+        Path to the BED file (either plain .bed or .bed.gz with .tbi index).
+    :return:
+        List of intervals (chrom, start, end).
     """
     intervals = []
 
-    if bed_file.endswith('.gz'):
+    if file.endswith('.gz'):
         # Check if the .tbi index exists for the gzipped BED file
-        if not os.path.exists(bed_file + '.tbi'):
+        if not os.path.exists(file + '.tbi'):
             raise FileNotFoundError(
-                f"Tabix index (.tbi) not found for {bed_file}"
+                f"Tabix index (.tbi) not found for {file}"
             )
 
         # Use pysam.TabixFile to read the gzipped BED file
-        with pysam.TabixFile(bed_file) as tbx:
+        with pysam.TabixFile(file) as tbx:
             for line in tbx.fetch():
                 chrom, start, end = line.strip().split()[:3]
                 intervals.append((chrom, int(start), int(end)))
     else:
         # Read plain BED file
-        with open(bed_file, 'r') as bed:
+        with open(file, 'r') as bed:
             for line in bed:
                 chrom, start, end = line.strip().split()[:3]
                 intervals.append((chrom, int(start), int(end)))
@@ -128,7 +130,9 @@ def process_bam_files(
         futures = []
 
         # Submit jobs for parallel processing
-        for i, (bam_file, temp_bam_path) in enumerate(zip(bam_files, temp_bam_paths)):
+        for i, (bam_file, temp_bam_path) in enumerate(
+                zip(bam_files, temp_bam_paths)
+        ):
             if os.path.exists(temp_bam_path):
                 print(
                     f"Found existing temporary BAM: {temp_bam_path}, "
@@ -217,4 +221,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-# /Users/lp23/development/readformer/GIAB_BAM/illumina_2x250bps/HG003-250bp-All-good_S1.bam
