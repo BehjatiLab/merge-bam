@@ -2,7 +2,7 @@ import os
 import pysam
 import shutil
 from src.merge_bam import process_bam_files
-from src.create_test_bed import generate_bed_file
+from src.create_position_bed import generate_bed_file
 
 
 def create_dummy_bam(file_path, reads_at_positions):
