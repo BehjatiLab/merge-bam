@@ -5,7 +5,7 @@ import os
 
 
 def generate_bed_file(
-        output_file, num_positions, chromosome='chr1', bgzip=False
+        output_file, num_positions=1, chromosome='chr1', position_list=None, bgzip=False
 ):
     """
     Generate a BED file with a specified number of positions, optionally
@@ -17,14 +17,22 @@ def generate_bed_file(
         Number of positions to generate.
     :param chromosome:
         Chromosome name to use (default is 'chr1').
+    :param position_list:
+        List of positions to use instead of generating random positions.
     :param bgzip:
         Boolean indicating whether to bgzip and index the BED file.
     """
+    if position_list:
+        num_positions = len(position_list)
+
     positions = set()
 
     # Generate unique start positions
     while len(positions) < num_positions:
-        start = random.randint(1000, 1_000_000)
+        if position_list:
+            start = position_list.pop()
+        else:
+            start = random.randint(1000, 1_000_000)
         positions.add(start)
 
     # Sort positions
