@@ -3,13 +3,16 @@
 import argparse
 import pysam
 import os
+import heapq
+from tempfile import NamedTemporaryFile
 
 
 def create_bed_from_text(
-        input_file, output_file, vcf_indexed_input=False, bgzip=False
+        input_file, output_file, vcf_indexed_input=False, bgzip=False,
+        chunk_size=100000
 ):
     """
-    Create a BED file from a text file with format "chr1_10144_T_C".
+    Create a sorted BED file from a text file with format "chr1_10144_T_C".
 
     :param input_file:
         Path to the input text file.
@@ -19,28 +22,67 @@ def create_bed_from_text(
         Boolean indicating whether the input is VCF-indexed.
     :param bgzip:
         Boolean indicating whether to bgzip and index the BED file.
+    :param chunk_size:
+        Number of lines to process at once (for sorting in chunks).
     """
-    # Write positions directly to the BED file as they are processed
+
+    # Function to write sorted chunks to temporary files
+    def write_sorted_chunk(lines, temp_files):
+        lines.sort(key=lambda x: (x[0], x[1]))
+        with NamedTemporaryFile(
+                delete=False, mode='w',
+                dir=os.path.dirname(output_file)
+        ) as temp_file:
+            for line in lines:
+                temp_file.write('\t'.join(map(str, line)) + '\n')
+            temp_files.append(temp_file.name)
+
+    # Read input, process in chunks, and write sorted chunks
+    temp_files = []
+    current_chunk = []
+
+    with open(input_file, 'r') as infile:
+        for line in infile:
+            line = line.strip()
+            if not line:
+                continue
+            chrom, pos, ref, alt = line.split('_')
+            pos = int(pos)
+
+            if vcf_indexed_input:
+                start = pos - 1  # VCF is 1-indexed, BED is 0-indexed
+                end = pos
+            else:
+                start = pos  # BED start position
+                end = pos + 1
+
+            current_chunk.append((chrom, start, end, ref, alt))
+
+            if len(current_chunk) >= chunk_size:
+                write_sorted_chunk(current_chunk, temp_files)
+                current_chunk = []
+
+        # Write remaining lines in the last chunk
+        if current_chunk:
+            write_sorted_chunk(current_chunk, temp_files)
+
+    # Merge sorted chunks into the final output file
     with open(output_file, 'w') as bed_file:
-        with open(input_file, 'r') as infile:
-            for line in infile:
-                line = line.strip()
-                if not line:
-                    continue
-                chrom, pos, ref, alt = line.split('_')
-                pos = int(pos)
+        files = [open(temp, 'r') for temp in temp_files]
+        merged = heapq.merge(
+            *files,
+            key=lambda x: (x.split('\t')[0], int(x.split('\t')[1]))
+        )
+        for line in merged:
+            bed_file.write(line)
 
-                if vcf_indexed_input:
-                    start = pos - 1  # VCF is 1-indexed, BED is 0-indexed
-                    end = pos
-                else:
-                    start = pos  # BED start position
-                    end = pos + 1
+    # Clean up temporary files
+    for file in files:
+        file.close()
+    for temp in temp_files:
+        os.remove(temp)
 
-                # Write each entry to the BED file immediately
-                bed_file.write(f"{chrom}\t{start}\t{end}\t{ref}\t{alt}\n")
-
-    print(f"Generated BED file: {output_file}")
+    print(f"Generated and sorted BED file: {output_file}")
 
     # Optionally bgzip and tabix index the BED file
     if bgzip:
@@ -56,8 +98,8 @@ def create_bed_from_text(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Create a BGZIPPED and TABIX-indexed BED file from a text "
-                    "file with lines like 'chr1_10144_T_C'."
+        description="Create a sorted BGZIPPED and TABIX-indexed BED file from a"
+                    " text file with lines like 'chr1_10144_T_C'."
     )
     parser.add_argument(
         '-i', '--input-file', type=str, required=True,
@@ -75,12 +117,17 @@ def main():
         '--bgzip', action='store_true',
         help="Bgzip and tabix index the BED file."
     )
+    parser.add_argument(
+        '--chunk-size', type=int, default=100000,
+        help="Number of lines to process per chunk for sorting."
+    )
 
     args = parser.parse_args()
 
     # Create BED file from the input text file
     create_bed_from_text(
-        args.input_file, args.output_file, args.vcf_indexed_input, args.bgzip
+        args.input_file, args.output_file, args.vcf_indexed_input, args.bgzip,
+        args.chunk_size
     )
 
 
