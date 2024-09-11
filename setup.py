@@ -7,7 +7,7 @@ setup(
     package_dir={'': 'src'},
     entry_points={
         'console_scripts': [
-            'create-test-bed=create_test_bed:main',
+            'create-test-bed=create_position_bed:main',
             'merge-bam=merge_bam:main',
             'bed-from-txt=bed_from_mut_txt:main',
         ],
