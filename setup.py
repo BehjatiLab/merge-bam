@@ -16,4 +16,5 @@ setup(
         'pysam',  # Add other dependencies if necessary
     ],
     python_requires='>=3.11',
+    zip_safe=False,
 )
