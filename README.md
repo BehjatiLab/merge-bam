@@ -91,6 +91,7 @@ This command converts a text file with mutation data into a BED file that can be
 ```bash
 bed-from-txt -i /path/to/mutations.txt \
              -o /path/to/output.bed \
+             --do-not-include /path/to/mutations_to_exclude.txt \
              --vcf-indexed-input \
              --bgzip
 ```
@@ -99,6 +100,7 @@ bed-from-txt -i /path/to/mutations.txt \
 
 - `-i`, `--input-file`: Path to the input text file.
 - `-o`, `--output-file`: Path to the output BED file.
+- `--do-not-include`: Path to a text file containing mutations to exclude from the BED file.
 - `--vcf-indexed-input`: Use 1-based indexing for the input positions. If not specified, 0-based indexing is used.
 - `--bgzip`: Compress the output BED file with bgzip and create a Tabix index.
 

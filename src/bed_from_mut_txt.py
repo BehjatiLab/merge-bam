@@ -9,7 +9,7 @@ from tempfile import NamedTemporaryFile
 
 def create_bed_from_text(
         input_file, output_file, vcf_indexed_input=False, bgzip=False,
-        chunk_size=100000
+        chunk_size=100000, do_not_include=None
 ):
     """
     Create a sorted BED file from a text file with format "chr1_10144_T_C".
@@ -24,7 +24,19 @@ def create_bed_from_text(
         Boolean indicating whether to bgzip and index the BED file.
     :param chunk_size:
         Number of lines to process at once (for sorting in chunks).
+    :param do_not_include:
+        Path to a file containing a list of positions to exclude from the output
+        BED file (optional).
     """
+
+    # Load the do_not_include variants into a set if provided
+    exclude_set = set()
+    if do_not_include:
+        with open(do_not_include, 'r') as exclude_file:
+            for line in exclude_file:
+                line = line.strip()
+                if line:
+                    exclude_set.add(line)
 
     # Function to write sorted chunks to temporary files
     def write_sorted_chunk(lines, temp_files):
@@ -44,7 +56,7 @@ def create_bed_from_text(
     with open(input_file, 'r') as infile:
         for line in infile:
             line = line.strip()
-            if not line:
+            if not line or line in exclude_set:  # Check against the exclude set
                 continue
             chrom, pos, ref, alt = line.split('_')
             pos = int(pos)
@@ -121,13 +133,18 @@ def main():
         '--chunk-size', type=int, default=100000,
         help="Number of lines to process per chunk for sorting."
     )
+    parser.add_argument(
+        '--do-not-include', type=str,
+        help="Path to a file containing a list of positions to exclude from the "
+             "output BED file."
+    )
 
     args = parser.parse_args()
 
     # Create BED file from the input text file
     create_bed_from_text(
         args.input_file, args.output_file, args.vcf_indexed_input, args.bgzip,
-        args.chunk_size
+        args.chunk_size, args.do_not_include
     )
 
 
